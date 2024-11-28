@@ -33,10 +33,13 @@ class Block(Basic):
     def draw(self, surface) -> None:
         pygame.draw.rect(surface, self.color, self.rect)
     
-    def collide(self):
-        # ============================================
-        # TODO: Implement an event when block collides with a ball
-        pass
+    def collide(self, ball: 'Ball'):
+        if self.alive and self.rect.colliderect(ball.rect):  # 충돌 감지
+            self.alive = False  # 블록 상태 변경
+            ball.dir = 360 - ball.dir  # 공의 방향 변경
+            self.color =(0,0,0)  #블록 색 변경
+        
+        
 
 
 class Paddle(Basic):
@@ -60,29 +63,39 @@ class Ball(Basic):
     def __init__(self, pos: tuple = config.ball_pos):
         super().__init__(config.ball_color, config.ball_speed, pos, config.ball_size)
         self.power = 1
-        self.dir = 90 + random.randint(-45, 45)
+        self.dir = 90 + random.randint(-45, 45)  # 공의 초기 방향을 랜덤으로 설정
 
     def draw(self, surface):
         pygame.draw.ellipse(surface, self.color, self.rect)
 
     def collide_block(self, blocks: list):
-        # ============================================
-        # TODO: Implement an event when the ball hits a block
-        pass
+        for block in blocks:
+            if block.alive and self.rect.colliderect(block.rect):  # 블록과 충돌 여부 확인
+                block.collide(self)  # Block의 collide 메서드 호출
+                # 공의 방향을 블록의 가로/세로 면 충돌에 따라 반사 처리
+                if abs(self.rect.right - block.rect.left) <= self.speed or abs(self.rect.left - block.rect.right) <= self.speed:
+                    self.dir = 180 - self.dir  # 좌우 면 충돌
+                elif abs(self.rect.bottom - block.rect.top) <= self.speed or abs(self.rect.top - block.rect.bottom) <= self.speed:
+                    self.dir = 360 - self.dir  # 상하 면 충돌
+                break  # 한 번 충돌하면 루프 종료
 
-    def collide_paddle(self, paddle: Paddle) -> None:
+    def collide_paddle(self, paddle: Paddle):
         if self.rect.colliderect(paddle.rect):
-            self.dir = 360 - self.dir + random.randint(-5, 5)
+            self.dir = 360 - self.dir + random.randint(-5, 5)  # 공의 반사 각도를 약간 변형
+            self.rect.top = paddle.rect.top - self.rect.height  # 공이 패들에 묻히는 현상 방지
 
     def hit_wall(self):
-        # ============================================
-        # TODO: Implement a service that bounces off when the ball hits the wall
-        pass
-        # 좌우 벽 충돌
-        
-        # 상단 벽 충돌
-    
+        # 좌우 벽 충돌 처리
+        if self.rect.left <= 0 or self.rect.right >= config.display_dimension[0]:
+            self.dir = 180 - self.dir
+        # 상단 벽 충돌 처리
+        if self.rect.top <= 0:
+            self.dir = 360 - self.dir
+
     def alive(self):
-        # ============================================
-        # TODO: Implement a service that returns whether the ball is alive or not
-        pass
+        # 공이 화면 하단으로 떨어졌는지 확인
+        if self.rect.top >= config.display_dimension[1]:
+            return False  # 공이 죽었음
+        return True  # 공이 살아 있음
+
+
